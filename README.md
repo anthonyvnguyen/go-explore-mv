@@ -26,6 +26,7 @@ This implementation demonstrates **both phases** of Go-Explore using a custom 8�
 
 -   ✅ Weighted cell selection (prioritizes frontier exploration)
 -   ✅ Comprehensive visualization of archive statistics and selection patterns
+-   ✅ Custom 10% slipperiness testing (validates Phase 2 generalization)
 -   ✅ Complete two-phase implementation matching the paper's methodology
 
 ## Requirements
@@ -85,6 +86,7 @@ The notebook contains:
 10. **Training Visualization**: Success rates and losses across curriculum stages
 11. **Final Evaluation**: Policy performance over 100 test episodes
 12. **Comparison**: Phase 1 trajectory vs Phase 2 learned policy
+13. **Custom 10% Slipperiness Test**: Evaluates policy on manageable stochastic environment to validate generalization
 
 ## Key Concepts Demonstrated
 
@@ -103,6 +105,7 @@ The notebook contains:
 -   **Actor-Critic Architecture**: Separate policy and value function heads
 -   **GAE (Generalized Advantage Estimation)**: Variance reduction for advantage computation
 -   **Robustification**: Converting brittle trajectories into robust neural network policies
+-   **Stochastic Generalization**: Testing policy transfer from deterministic to 10% slipperiness environments
 
 ## Implementation Notes
 
@@ -122,7 +125,8 @@ This implementation demonstrates both phases of Go-Explore with some simplificat
 ✅ Weighted cell selection (prioritizes frontier cells)  
 ✅ PPO for policy optimization  
 ✅ Backward Algorithm curriculum learning  
-✅ Trajectory-to-policy conversion methodology
+✅ Trajectory-to-policy conversion methodology  
+✅ Custom 10% slipperiness testing (deterministic training → manageable stochastic evaluation)
 
 ## Expected Results
 
@@ -139,10 +143,20 @@ When run on FrozenLake-v1 (8×8, deterministic), Phase 1 should:
 
 After training with the Backward Algorithm, Phase 2 should:
 
--   Achieve **>90% success rate** (typically 95-100%)
+-   **Deterministic Environment**: Achieve >90% success rate (typically 95-100%)
 -   Learn an **optimal or near-optimal policy** (14-step Manhattan distance solution)
 -   Successfully progress through all curriculum stages
 -   Convert the brittle Phase 1 trajectory into a robust neural network policy
+
+### Custom 10% Slipperiness Test Results
+
+After training on deterministic environment, testing on custom 10% slipperiness environment:
+
+-   **Expected success rate**: 80-95%
+-   **Action noise**: 10% chance of unintended movement per action
+-   **Interpretation**: >80% success demonstrates successful robustification and generalization
+-   **Key validation**: Proves policy learned navigation skills, not just trajectory memorization
+-   **Advantage**: Much more manageable than standard 67% slipperiness, allowing proper testing
 
 ### Typical Training Pattern
 
