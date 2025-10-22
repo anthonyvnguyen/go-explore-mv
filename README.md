@@ -17,10 +17,16 @@ Paper link: https://huggingface.co/papers/1901.10995
 
 Go-Explore is a novel exploration algorithm designed to solve "hard-exploration" problems in reinforcement learning.
 
-This implementation demonstrates **both phases** of Go-Explore using the FrozenLake-v1 (8×8, deterministic) environment from Gymnasium:
+This implementation demonstrates **both phases** of Go-Explore using a custom 8×8 FrozenLake environment with the goal in the bottom-right quadrant:
 
--   **Phase 1** systematically explores using an archive to discover solution trajectories
+-   **Phase 1** systematically explores using an archive with **weighted cell selection** to discover solution trajectories
 -   **Phase 2** trains a robust neural network policy using PPO and the Backward Algorithm curriculum
+
+**Key Features:**
+
+-   ✅ Weighted cell selection (prioritizes frontier exploration)
+-   ✅ Comprehensive visualization of archive statistics and selection patterns
+-   ✅ Complete two-phase implementation matching the paper's methodology
 
 ## Requirements
 
@@ -65,10 +71,10 @@ The notebook contains:
 ### Phase 1 — Exploration
 
 1. **Introduction**: Overview of Go-Explore and its motivation
-2. **Algorithm Explanation**: Detailed description of Phase 1 components
-3. **Implementation**: Archive-based exploration with complete code
-4. **Visualization**: Plots showing exploration progress and discovered cells
-5. **Analysis**: Archive statistics and top trajectories
+2. **Algorithm Explanation**: Detailed description of Phase 1 components (including weighted selection)
+3. **Implementation**: Archive-based exploration with weighted cell selection
+4. **Visualization**: Plots showing exploration progress, cell selection patterns, and archive statistics
+5. **Analysis**: Archive statistics, visit distribution, and top trajectories
 6. **Comparison**: Go-Explore vs pure random exploration
 
 ### Phase 2 — Robustification
@@ -86,6 +92,7 @@ The notebook contains:
 
 -   **Archive**: Storage of visited states and trajectories
 -   **State Abstraction**: Converting states to abstract "cells"
+-   **Weighted Cell Selection**: Prioritizes rarely-visited frontier cells (✅ implemented)
 -   **Return-Then-Explore**: Systematically returning to promising states
 -   **Deterministic Replay**: Reliable trajectory execution in deterministic environments
 
@@ -106,13 +113,13 @@ This implementation demonstrates both phases of Go-Explore with some simplificat
 -   **Environment**: FrozenLake (discrete states) instead of Atari (pixel observations)
 -   **Network**: MLP instead of CNN (appropriate for discrete states)
 -   **State representation**: One-hot encoding instead of image downsampling
--   **Cell selection**: Random instead of prioritized selection heuristics
 -   **Training scale**: Fewer episodes (simpler environment requires less training)
 
 ### What Remains Faithful to Go-Explore:
 
 ✅ Two-phase approach (exploration → robustification)  
 ✅ Archive-based systematic exploration  
+✅ Weighted cell selection (prioritizes frontier cells)  
 ✅ PPO for policy optimization  
 ✅ Backward Algorithm curriculum learning  
 ✅ Trajectory-to-policy conversion methodology
