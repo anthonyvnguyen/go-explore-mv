@@ -9,50 +9,106 @@ import heapq
 import random
 from collections import defaultdict, deque
 import math
+import time
 
 # ============================================================================
 # 1. Core Functions (Recreated from Notebook)
 # ============================================================================
 
-def create_16x16_map():
-    """Create a 16x16 FrozenLake map with strategic goal placement."""
-    # Create base map with all frozen tiles
-    custom_map = []
-    for i in range(16):
-        row = ['F'] * 16
-        custom_map.append(row)
-    
-    # Add start position (top-left corner)
-    custom_map[0][0] = 'S'
-    
-    # Add goal position (toward bottom-right, not corner)
-    goal_row = 11  # 70% across the map
-    goal_col = 11
-    custom_map[goal_row][goal_col] = 'G'
-    
-    # Add more strategic holes to make pathfinding more challenging
-    holes = [
-        # Create barriers and obstacles
-        (4, 4), (4, 5), (4, 6), (4, 7),  # Horizontal barrier
-        (8, 8), (8, 9), (8, 10), (8, 11),  # Another horizontal barrier
-        (12, 6), (12, 7), (12, 8), (12, 9),  # Third horizontal barrier
-        (6, 11), (7, 11), (8, 11), (9, 11), (10, 11),  # Vertical barrier
-        (10, 2), (10, 3), (10, 4), (10, 5),  # Fourth horizontal barrier
-        (2, 10), (3, 10), (4, 10), (5, 10),  # Fifth horizontal barrier
+class MapGenerator:
+    @staticmethod
+    def get_empty_grid(size=16):
+        return [['F' for _ in range(size)] for _ in range(size)]
+
+    @staticmethod
+    def create_original():
+        """Original strategic map"""
+        custom_map = []
+        for i in range(16):
+            row = ['F'] * 16
+            custom_map.append(row)
+        custom_map[0][0] = 'S'
+        custom_map[11][11] = 'G'
         
-        # Add some scattered holes for additional challenge
-        (1, 5), (1, 8), (1, 12),
-        (5, 1), (5, 9), (5, 14),
-        (9, 1), (9, 6), (9, 13),
-        (13, 3), (13, 8), (13, 12),
-        (14, 1), (14, 5), (14, 10),
+        holes = [
+            (4, 4), (4, 5), (4, 6), (4, 7),
+            (8, 8), (8, 9), (8, 10), (8, 11),
+            (12, 6), (12, 7), (12, 8), (12, 9),
+            (6, 11), (7, 11), (8, 11), (9, 11), (10, 11),
+            (10, 2), (10, 3), (10, 4), (10, 5),
+            (2, 10), (3, 10), (4, 10), (5, 10),
+            (1, 5), (1, 8), (1, 12),
+            (5, 1), (5, 9), (5, 14),
+            (9, 1), (9, 6), (9, 13),
+            (13, 3), (13, 8), (13, 12),
+            (14, 1), (14, 5), (14, 10),
+        ]
+        for r, c in holes:
+            custom_map[r][c] = 'H'
+        return [''.join(row) for row in custom_map]
+
+    @staticmethod
+    def create_four_rooms():
+        grid = [['F' for _ in range(16)] for _ in range(16)]
+        # Walls
+        for i in range(16):
+            grid[7][i] = 'H'  # Horizontal divider
+            grid[i][7] = 'H'  # Vertical divider
+            
+        # Doorways
+        grid[7][3] = 'F'  # Top-left to Bottom-left
+        grid[7][12] = 'F' # Top-right to Bottom-right
+        grid[3][7] = 'F'  # Top-left to Top-right
+        grid[12][7] = 'F' # Bottom-left to Bottom-right
         
-    ]
-    for hole_row, hole_col in holes:
-        custom_map[hole_row][hole_col] = 'H'
+        grid[0][0] = 'S'
+        grid[15][15] = 'G'
+        return [''.join(row) for row in grid]
+
+    @staticmethod
+    def create_bottleneck():
+        grid = [['F' for _ in range(16)] for _ in range(16)]
+        # Wall in the middle column
+        for i in range(16):
+            if i != 8: # Gap at row 8
+                grid[i][8] = 'H'
+        
+        grid[0][0] = 'S'
+        grid[15][15] = 'G'
+        return [''.join(row) for row in grid]
+
+    @staticmethod
+    def create_maze():
+        grid = [['F' for _ in range(16)] for _ in range(16)]
+        # Simple snake pattern
+        for row in range(1, 15, 2):
+            for col in range(1, 15):
+                if (row // 2) % 2 == 0:
+                    if col < 14: grid[row][col] = 'H'
+                else:
+                    if col > 1: grid[row][col] = 'H'
+                    
+        grid[0][0] = 'S'
+        grid[15][15] = 'G'
+        return [''.join(row) for row in grid]
     
-    # Convert to string format
-    return [''.join(row) for row in custom_map]
+    @staticmethod
+    def create_open():
+        grid = [['F' for _ in range(16)] for _ in range(16)]
+        grid[0][0] = 'S'
+        grid[15][15] = 'G'
+        # Few random holes
+        grid[5][5] = 'H'
+        grid[10][10] = 'H'
+        return [''.join(row) for row in grid]
+
+maps = {
+    "Original": MapGenerator.create_original(),
+    "FourRooms": MapGenerator.create_four_rooms(),
+    "Bottleneck": MapGenerator.create_bottleneck(),
+    "Maze": MapGenerator.create_maze(),
+    "Open": MapGenerator.create_open()
+}
 
 def get_cell(state):
     """State abstraction function: converts raw state to a cell representation."""
@@ -105,6 +161,85 @@ def explore_from_cell_original(env, trajectory, k_steps, stickiness=0.9):
             break
     
     return new_cells
+
+def go_explore_phase1(env, max_iterations=1000, k_explore=10, target_reward=1.0, 
+                     use_weighted_selection=True, stickiness=0.9):
+    """
+    Original Go-Explore Phase 1 algorithm from baseline.
+    Recreated here for standalone script execution.
+    """
+    initial_state, _ = env.reset()
+    initial_cell = get_cell(initial_state)
+    
+    archive = {
+        initial_cell: {
+            'trajectory': [],
+            'reward': 0.0,
+            'times_chosen': 0,
+            'times_visited': 0,
+            'first_visit': 0
+        }
+    }
+    
+    history = {
+        'iterations': [],
+        'cells_discovered': [],
+        'max_reward': [],
+        'solved_iteration': None
+    }
+    
+    solved = False
+    
+    for iteration in range(max_iterations):
+        # Select cell
+        cells = list(archive.keys())
+        if use_weighted_selection:
+            weights = [(1.0 / (archive[c]['times_chosen'] + 0.1) ** 0.5) for c in cells]
+            total = sum(weights)
+            weights = [w / total for w in weights]
+            cell = random.choices(cells, weights=weights, k=1)[0]
+        else:
+            cell = random.choice(cells)
+        
+        archive[cell]['times_chosen'] += 1
+        trajectory = archive[cell]['trajectory']
+        
+        # Explore
+        new_cells = explore_from_cell_original(env, trajectory, k_explore, stickiness)
+        
+        # Update archive
+        for new_cell, (new_trajectory, new_reward) in new_cells.items():
+            if new_cell in archive:
+                archive[new_cell]['times_visited'] += 1
+            
+            should_update = (new_cell not in archive or 
+                           new_reward > archive[new_cell]['reward'] or
+                           (new_reward == archive[new_cell]['reward'] and 
+                            len(new_trajectory) < len(archive[new_cell]['trajectory'])))
+            
+            if should_update:
+                if new_cell not in archive:
+                    archive[new_cell] = {
+                        'trajectory': new_trajectory,
+                        'reward': new_reward,
+                        'times_chosen': 0,
+                        'times_visited': 1,
+                        'first_visit': iteration
+                    }
+                else:
+                    archive[new_cell]['trajectory'] = new_trajectory
+                    archive[new_cell]['reward'] = new_reward
+                
+                if new_reward >= target_reward and not solved:
+                    solved = True
+                    history['solved_iteration'] = iteration
+        
+        history['iterations'].append(iteration)
+        history['cells_discovered'].append(len(archive))
+        history['max_reward'].append(max(cell_data['reward'] for cell_data in archive.values()))
+    
+    return archive, history
+
 
 # ============================================================================
 # 2. Dyna Component (Model-Based Planning)
@@ -544,8 +679,6 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
     }
     
     solved = False
-    print(f"Starting Enhanced Go-Explore Phase 1...")
-    print(f"  Dyna: {use_dyna}, Sweeping: {use_sweeping}, Learned Selector: {use_learned_selector}")
     
     # Tracking for rewards/returns for selector training
     # We define "return" for a selection as: 
@@ -629,7 +762,6 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
                 if new_reward >= target_reward and not solved:
                     solved = True
                     history['solved_iteration'] = iteration
-                    print(f"SOLVED at iteration {iteration}! Reward: {new_reward}")
 
         # 6. Update Models & Priorities (Sweeping)
         # Dyna model was updated inside explore_from_cell_enhanced via calls to update()
@@ -662,9 +794,9 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
         history['max_reward'].append(max(c['reward'] for c in archive.values()))
         
         if iteration % 100 == 0:
-            print(f"Iter {iteration}: {len(archive)} cells, Max Reward {history['max_reward'][-1]:.2f}")
+             pass # Silence intermediate output for multi-seed runs
             
-    return archive, history
+    return archive, history, dyna_model, sweeping, selector_policy
 
 # ============================================================================
 # 7. Phase 2 Enhancement
@@ -752,11 +884,58 @@ def backward_algorithm_ppo_enhanced(env, policy, reference_trajectory, archive=N
     return curriculum_starts
 
 if __name__ == "__main__":
-    # Simple test run
-    env_map = create_16x16_map()
-    env = gym.make('FrozenLake-v1', desc=env_map, is_slippery=False, render_mode=None)
+    # Multi-seed test run across multiple maps
+    NUM_SEEDS = 5
+    print(f"Running Enhanced Go-Explore Phase 1 on multiple maps ({NUM_SEEDS} seeds each)...")
     
-    print("Running Enhanced Go-Explore Phase 1...")
-    archive, history = go_explore_phase1_enhanced(env, max_iterations=500)
+    results_comparison = {}
+
+    for map_name, map_layout in maps.items():
+        print(f"\n{'='*30}")
+        print(f"Testing Map: {map_name}")
+        print(f"{'='*30}")
+        
+        results_comparison[map_name] = {'Original': [], 'Enhanced': []}
+        
+        # 1. Original Algorithm
+        print(f"Running Original Algorithm...")
+        for seed in range(NUM_SEEDS):
+            random.seed(42 + seed); np.random.seed(42 + seed); torch.manual_seed(42 + seed)
+            env_orig = gym.make('FrozenLake-v1', desc=map_layout, is_slippery=False, render_mode=None)
+            archive_orig, history_orig = go_explore_phase1(env_orig, max_iterations=500, k_explore=10, target_reward=1.0)
+            results_comparison[map_name]['Original'].append(history_orig)
+            print(f"  Seed {seed}: Solved {history_orig['solved_iteration']}, Discovered {len(archive_orig)}")
+        
+        # 2. Enhanced Algorithm
+        print(f"Running Enhanced Algorithm...")
+        for seed in range(NUM_SEEDS):
+            random.seed(42 + seed); np.random.seed(42 + seed); torch.manual_seed(42 + seed)
+            env_enh = gym.make('FrozenLake-v1', desc=map_layout, is_slippery=False, render_mode=None)
+            archive_enh, history_enh, _, _, _ = go_explore_phase1_enhanced(
+                env_enh, max_iterations=500, k_explore=10, target_reward=1.0,
+                use_dyna=True, use_sweeping=True, use_learned_selector=True
+            )
+            results_comparison[map_name]['Enhanced'].append(history_enh)
+            print(f"  Seed {seed}: Solved {history_enh['solved_iteration']}, Discovered {len(archive_enh)}")
     
-    print(f"Exploration done. Discovered {len(archive)} cells.")
+    # Summary
+    print("\n" + "="*80)
+    print(f"{'Map':<15} | {'Algorithm':<10} | {'Success %':<10} | {'Mean Solved Iter':<18} | {'Mean Final Cells':<18}")
+    print("-" * 80)
+    
+    for map_name, res in results_comparison.items():
+        for algo in ['Original', 'Enhanced']:
+            histories = res[algo]
+            solved_counts = sum(1 for h in histories if h['solved_iteration'] is not None)
+            success_rate = (solved_counts / NUM_SEEDS) * 100
+            
+            solved_iters = [h['solved_iteration'] for h in histories if h['solved_iteration'] is not None]
+            mean_solved = np.mean(solved_iters) if solved_iters else float('inf')
+            
+            final_cells = [h['cells_discovered'][-1] for h in histories]
+            mean_cells = np.mean(final_cells)
+            
+            mean_solved_str = f"{mean_solved:.1f}" if mean_solved != float('inf') else "N/A"
+            
+            print(f"{map_name:<15} | {algo:<10} | {success_rate:<10.1f} | {mean_solved_str:<18} | {mean_cells:<18.1f}")
+        print("-" * 80)
