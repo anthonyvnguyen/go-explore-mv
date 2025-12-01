@@ -10,6 +10,7 @@ import random
 from collections import defaultdict, deque
 import math
 import time
+import itertools
 
 # ============================================================================
 # 1. Core Functions (Recreated from Notebook)
@@ -353,6 +354,7 @@ class PrioritizedSweeping:
         # Keep track of what's in queue to update priorities
         self.entry_finder = {} 
         self.REMOVED = '<removed-task>'
+        self.counter = itertools.count()
         
         # Predecessors: map next_state -> list of (state, action)
         # Used for reverse propagation
@@ -365,7 +367,8 @@ class PrioritizedSweeping:
         """Add or update the priority of a state."""
         if state in self.entry_finder:
             self.remove_task(state)
-        entry = [-priority, state]
+        count = next(self.counter)
+        entry = [-priority, count, state]
         self.entry_finder[state] = entry
         heapq.heappush(self.pq, entry)
 
@@ -377,7 +380,7 @@ class PrioritizedSweeping:
     def pop_task(self):
         """Remove and return the lowest priority task. Raise KeyError if empty."""
         while self.pq:
-            priority, state = heapq.heappop(self.pq)
+            priority, count, state = heapq.heappop(self.pq)
             if state is not self.REMOVED:
                 del self.entry_finder[state]
                 return -priority, state
@@ -568,7 +571,7 @@ def update_cell_selector_policy(policy, optimizer, batch_log_probs, batch_return
 # 5. Enhanced Exploration
 # ============================================================================
 
-def explore_from_cell_enhanced(env, trajectory, k_steps, dyna_model, stickiness=0.9):
+def explore_from_cell_enhanced(env, trajectory, k_steps, dyna_model, sweeping=None, stickiness=0.9):
     """
     Enhanced exploration using Dyna model to bias first action.
     """
@@ -617,6 +620,13 @@ def explore_from_cell_enhanced(env, trajectory, k_steps, dyna_model, stickiness=
         if dyna_model:
             dyna_model.update(state, action, next_state, reward)
             
+        # Update Prioritized Sweeping with real experience
+        if sweeping:
+            error = sweeping.update_value(state, reward, next_state)
+            sweeping.add_predecessor(state, action, next_state)
+            if error > sweeping.threshold:
+                sweeping.update_priority(state, error)
+            
         current_trajectory.append(action)
         reward_so_far += reward
         
@@ -663,6 +673,7 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
     # Components
     dyna_model = DynaModel() if use_dyna else None
     sweeping = PrioritizedSweeping() if use_sweeping else None
+    dyna_novelty_cache = {} # Cache for novelty values
     
     # Selector Policy
     selector_policy = CellSelectorPolicy()
@@ -681,33 +692,26 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
     solved = False
     
     # Tracking for rewards/returns for selector training
-    # We define "return" for a selection as: 
-    # (cells_discovered_count + reward_increase * 10) / steps_taken ?
-    # Or just simple count.
     
     for iteration in range(max_iterations):
         # 1. Select Cell
         if use_learned_selector:
             # Get priorities from sweeping if available
-            priorities = {cell: -p for cell, p in sweeping.entry_finder.values()} if sweeping else {}
-            # Get Dyna novelty estimates? Computing for ALL cells is expensive.
-            # We can cache them or just compute for a subset?
-            # For now, let's just pass empty or what we have. 
-            # Actually, dyna_planning returns novelty for a specific cell. 
-            # We can't easily run it for all cells every step.
-            # Let's track "last known novelty" in archive? 
-            # Or just compute it on the fly for candidates? 
-            # To keep it fast, we might skip dyna_novelty in global selection or use a cached value.
-            dyna_estimates = {} # Placeholder for now to avoid slowness
+            # Entry is [-priority, count, state], we want state -> priority
+            priorities = {entry[2]: -entry[0] for entry in sweeping.entry_finder.values()} if sweeping else {}
+            
+            # Use cached Dyna novelty estimates
+            dyna_estimates = {c: dyna_novelty_cache.get(c, 0.0) for c in archive.keys()}
             
             cell, log_prob, _ = select_cell_learned(archive, selector_policy, iteration, 
                                                    dyna_estimates, priorities)
         else:
             # Fallback to simple weighted
-            cell = list(archive.keys())[0] # simplified, should use weighted function from original
-            # Re-implement simple weighted selection here if needed or import
-            # Let's just use random for fallback if selector disabled to save space
-            cell = random.choice(list(archive.keys()))
+            cells = list(archive.keys())
+            weights = [(1.0 / (archive[c]['times_chosen'] + 0.1) ** 0.5) for c in cells]
+            total = sum(weights)
+            weights = [w / total for w in weights]
+            cell = random.choices(cells, weights=weights, k=1)[0]
             log_prob = None
 
         archive[cell]['times_chosen'] += 1
@@ -721,15 +725,14 @@ def go_explore_phase1_enhanced(env, max_iterations=1000, k_explore=10, target_re
             continue
             
         # 3. Dyna Planning (Imagination)
-        # Compute novelty for the CURRENT cell to update its feature for next time?
-        # And to update priorities.
         if use_dyna:
             novelty = dyna_planning(dyna_model, archive, get_cell(state))
-            # We could store this novelty in archive for the selector
+            # Update cache
+            dyna_novelty_cache[get_cell(state)] = novelty
             
         # 4. Exploration
         new_cells_data, cells_found, reward_inc = explore_from_cell_enhanced(
-            env, trajectory, k_explore, dyna_model, stickiness
+            env, trajectory, k_explore, dyna_model, sweeping=sweeping, stickiness=stickiness
         )
         
         # 5. Archive Update
@@ -832,56 +835,52 @@ class ActorCriticNetwork(nn.Module):
 def backward_algorithm_ppo_enhanced(env, policy, reference_trajectory, archive=None, 
                                    use_near_miss=True, **kwargs):
     """
-    Enhanced Backward Algorithm that can use near-miss states from archive.
+    Enhanced Backward Algorithm that generates a curriculum of starting trajectories,
+    including near-miss states from the archive.
     """
-    # This function would wrap the original backward algorithm logic
-    # Ideally, we would import the original function, but to be standalone,
-    # we might need to implement the training loop or just the curriculum generation.
-    
-    # For this implementation, we'll generate the curriculum list including near-misses
-    # and then print out how it would be used, as re-implementing the full PPO loop 
-    # here duplicates a lot of code from the notebook.
-    
-    # However, to be fully functional as requested:
-    # We will generate the curriculum points.
-    
-    curriculum_starts = []
+    curriculum_trajectories = []
     traj_len = len(reference_trajectory)
     
-    # Standard backward curriculum
-    curriculum_starts.extend([
+    # Standard backward curriculum (indices -> trajectories)
+    # Start indices: 90%, 70%, 50%, 30%, 0%
+    indices = [
         int(0.9 * traj_len),
         int(0.7 * traj_len),
         int(0.5 * traj_len),
         int(0.3 * traj_len),
         0
-    ])
+    ]
+    
+    # Add standard trajectory segments
+    for idx in indices:
+        curriculum_trajectories.append(reference_trajectory[:idx])
     
     if use_near_miss and archive:
-        # Find near miss states: High reward but not 1.0? Or close to goal?
-        # In FrozenLake, reward is 0 or 1. So high reward < 1.0 is impossible if unsolved.
-        # If solved, reward 1.0 is the goal.
-        # So we look for "close to goal" geometrically.
-        
         goal_pos = (11, 11) # From map
-        
         near_misses = []
+        
+        # Get cells in reference trajectory to avoid duplicates
+        ref_cells = set()
+        # We would need to rollout to know for sure, but we can skip this strict check for now
+        # or assume reference_trajectory is efficient.
+        
         for cell, data in archive.items():
-            # Cell is state index. Convert to row, col
             row = cell // 16
             col = cell % 16
             dist = abs(row - goal_pos[0]) + abs(col - goal_pos[1])
             
-            # If close to goal (e.g. within 5 steps) and NOT on the optimal trajectory (approx)
-            if dist < 5 and dist > 0:
-                # Add as potential start point? 
-                # We need a trajectory to this cell to start from it.
-                near_misses.append(data['trajectory'])
+            # If close to goal (e.g. within 5 steps) 
+            if 0 < dist < 5:
+                # Check if reward is < 1.0 (didn't reach goal)
+                if data['reward'] < 1.0:
+                    near_misses.append(data['trajectory'])
         
-        print(f"Found {len(near_misses)} near-miss states to add to curriculum.")
-        # We would return these to be used in a modified training loop
+        print(f"Found {len(near_misses)} near-miss trajectories to add to curriculum.")
         
-    return curriculum_starts
+        # Insert near-misses at the beginning (easiest tasks)
+        curriculum_trajectories = near_misses + curriculum_trajectories
+        
+    return curriculum_trajectories
 
 if __name__ == "__main__":
     # Multi-seed test run across multiple maps
