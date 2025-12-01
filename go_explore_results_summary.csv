@@ -1,0 +1,31 @@
+Map,Configuration,Mean,Std,Mean ± Std,Success Rate,Change vs Baseline,Change (%)
+Original,Baseline (Original),165.3,82.0,165.3 ± 82.0,100.0%,baseline,0.0
+Original,+ Dyna Only,168.0,78.3,168.0 ± 78.3,100.0%,+1.6%,1.633393829401082
+Original,+ Sweeping Only,165.3,82.0,165.3 ± 82.0,100.0%,+0.0%,0.0
+Original,+ Learned Selector Only,155.3,79.9,155.3 ± 79.9,100.0%,-6.0%,-6.049606775559589
+Original,+ Dyna + Sweeping,168.0,78.3,168.0 ± 78.3,100.0%,+1.6%,1.633393829401082
+Original,All Components,178.6,105.4,178.6 ± 105.4,100.0%,+8.0%,8.04597701149424
+FourRooms,Baseline (Original),185.3,69.9,185.3 ± 69.9,100.0%,baseline,0.0
+FourRooms,+ Dyna Only,175.3,75.3,175.3 ± 75.3,100.0%,-5.4%,-5.396654074473826
+FourRooms,+ Sweeping Only,185.3,69.9,185.3 ± 69.9,100.0%,+0.0%,0.0
+FourRooms,+ Learned Selector Only,185.2,68.6,185.2 ± 68.6,100.0%,-0.1%,-0.053966540744750525
+FourRooms,+ Dyna + Sweeping,175.3,75.3,175.3 ± 75.3,100.0%,-5.4%,-5.396654074473826
+FourRooms,All Components,225.5,82.7,225.5 ± 82.7,100.0%,+21.7%,21.69454937938477
+Bottleneck,Baseline (Original),159.2,73.6,159.2 ± 73.6,100.0%,baseline,0.0
+Bottleneck,+ Dyna Only,197.6,67.4,197.6 ± 67.4,100.0%,+24.1%,24.120603015075382
+Bottleneck,+ Sweeping Only,159.2,73.6,159.2 ± 73.6,100.0%,+0.0%,0.0
+Bottleneck,+ Learned Selector Only,203.2,81.3,203.2 ± 81.3,96.0%,+27.6%,27.638190954773872
+Bottleneck,+ Dyna + Sweeping,197.6,67.4,197.6 ± 67.4,100.0%,+24.1%,24.120603015075382
+Bottleneck,All Components,217.5,90.0,217.5 ± 90.0,96.0%,+36.6%,36.62060301507539
+Maze,Baseline (Original),0.0,0.0,0.0 ± 0.0,0.0%,baseline,0.0
+Maze,+ Dyna Only,396.5,25.5,396.5 ± 25.5,8.0%,N/A (baseline failed),inf
+Maze,+ Sweeping Only,0.0,0.0,0.0 ± 0.0,0.0%,N/A (both failed),0.0
+Maze,+ Learned Selector Only,327.7,89.7,327.7 ± 89.7,12.0%,N/A (baseline failed),inf
+Maze,+ Dyna + Sweeping,396.5,25.5,396.5 ± 25.5,8.0%,N/A (baseline failed),inf
+Maze,All Components,461.0,0.0,461.0 ± 0.0,4.0%,N/A (baseline failed),inf
+Open,Baseline (Original),69.4,48.0,69.4 ± 48.0,100.0%,baseline,0.0
+Open,+ Dyna Only,104.6,49.6,104.6 ± 49.6,100.0%,+50.7%,50.720461095100845
+Open,+ Sweeping Only,69.4,48.0,69.4 ± 48.0,100.0%,+0.0%,0.0
+Open,+ Learned Selector Only,102.0,59.4,102.0 ± 59.4,100.0%,+47.0%,46.974063400576355
+Open,+ Dyna + Sweeping,104.6,49.6,104.6 ± 49.6,100.0%,+50.7%,50.720461095100845
+Open,All Components,124.4,65.8,124.4 ± 65.8,100.0%,+79.3%,79.25072046109509
