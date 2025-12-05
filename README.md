@@ -1,42 +1,73 @@
-# Go-Explore: Complete Two-Phase Implementation
+# Enhanced Go-Explore: Dyna, Sweeping & Learned Selection
 
-This repository contains a Jupyter Notebook implementing **both phases** of the Go-Explore algorithm for a graduate-level reinforcement learning project:
+This repository contains a Jupyter Notebook implementing an **enhanced version** of the Go-Explore algorithm for a graduate-level reinforcement learning project. It builds upon the standard two-phase Go-Explore implementation by integrating classic reinforcement learning techniques to investigate potential improvements in exploration efficiency.
 
--   **Phase 1**: "Explore Until Solved" (archive-based exploration)
--   **Phase 2**: "Robustification" (PPO with Backward Algorithm)
+-   **File**: `go_explore_final.ipynb`
+-   **Environment**: Custom 16×16 FrozenLake with goal in the bottom-right quadrant
 
-## Paper Reference
+## Paper References
 
-**Go-Explore: A New Approach for Hard-Exploration Problems**  
-Adrien Ecoffet, Joost Huizinga, Joel Lehman, Kenneth O. Stanley, and Jeff Clune  
-Uber AI Labs (2019)
+**Base Algorithm:**
 
-Paper link: https://huggingface.co/papers/1901.10995
+-   **Go-Explore**: Ecoffet, A., Huizinga, J., Lehman, J., Stanley, K. O., & Clune, J. (2019). _Go-Explore: A New Approach for Hard-Exploration Problems_. [arXiv:1901.10995](https://huggingface.co/papers/1901.10995)
+
+**Enhancements Implemented:**
+
+-   **Dyna (Model-Based Planning)**: Sutton, R. S. (1990). _Integrated architectures for learning, planning, and reacting_.
+-   **Prioritized Sweeping**: Moore, A. W., & Atkeson, C. G. (1993). _Prioritized sweeping: Reinforcement learning with less data and less time_.
+-   **Learned Cell Selection (REINFORCE)**: Williams, R. J. (1992). _Simple statistical gradient-following algorithms for connectionist reinforcement learning_.
+-   **Near-Miss Integration**: Inspired by Salimans et al. (2018). _Learning Montezuma’s Revenge from a Single Demonstration_.
 
 ## Overview
 
-Go-Explore is a novel exploration algorithm designed to solve "hard-exploration" problems in reinforcement learning.
+This implementation demonstrates **both phases** of Go-Explore, augmented with additional mechanisms:
 
-This implementation demonstrates **both phases** of Go-Explore using a custom 16×16 FrozenLake environment with the goal in the bottom-right quadrant:
+1.  **Phase 1 (Enhanced Exploration)**:
 
--   **Phase 1** systematically explores using an archive with **weighted cell selection** to discover solution trajectories
--   **Phase 2** trains a robust neural network policy using PPO and the Backward Algorithm curriculum
+    -   **Dyna**: Learns a transition model to perform "imagined" rollouts, estimating cell novelty without physical visits.
+    -   **Prioritized Sweeping**: Propagates value changes backwards to prioritize exploration from promising areas.
+    -   **Learned Cell Selection**: Replaces heuristic weighting with a policy network trained via REINFORCE to select cells based on features like visit count and novelty.
 
-**Environment Details:**
+2.  **Phase 2 (Robustification)**:
+    -   **Backward Algorithm**: Curriculum learning starting from near the goal.
+    -   **Near-Miss Curriculum**: Integrates "near-miss" states (states close to the goal but not quite there) into the curriculum to improve robustness.
+    -   **PPO Training**: Trains a robust neural network policy.
 
--   **Map Size**: 16×16 (256 states) with strategic hole placement
--   **Goal Position**: (11,11) - 70% across the map for challenging navigation
--   **Obstacles**: Multiple horizontal and vertical barriers plus scattered holes for complex pathfinding
--   **Optimal Distance**: 22 steps (Manhattan distance from start to goal)
+## Environment Details
 
-**Key Features:**
+This implementation provides 5 different 16×16 map layouts to test exploration under varying conditions:
 
--   ✅ Weighted cell selection (prioritizes frontier exploration)
--   ✅ Sticky random exploration (90% probability of repeating last action)
--   ✅ Behavior cloning warm-start before PPO training
--   ✅ Comprehensive visualization of archive statistics and selection patterns
--   ✅ Custom 10% slipperiness testing (validates Phase 2 generalization)
--   ✅ Complete two-phase implementation matching the paper's methodology
+1.  **Original**: Strategic map with barriers and holes (Goal at 11,11).
+2.  **FourRooms**: 4 rooms connected by narrow doorways (Goal at 15,15).
+3.  **Bottleneck**: Two large areas separated by a single narrow passage (Goal at 15,15).
+4.  **Maze**: A generated maze with a single solution path (Goal at 15,15).
+5.  **Open**: Mostly open space with minimal obstacles (Goal at 15,15).
+
+The default environment uses the **Original** map.
+
+## Key Features
+
+### Phase 1 Enhancements
+
+-   ✅ **Dyna-Q Integration**: Updates internal models and performs planning steps.
+-   ✅ **Prioritized Sweeping**: Maintains a priority queue for value propagation.
+-   ✅ **Learned Selection Policy**: Neural network selector (Inputs: cell depth, visits, novelty, priority).
+-   ✅ **Comparison Framework**: Benchmarks "Enhanced" vs. "Standard" Go-Explore.
+
+### Phase 2 Features
+
+-   ✅ **Behavior Cloning Warm-Start**: Accelerates initial policy learning.
+-   ✅ **Backward Algorithm with Near-Misses**: Curriculum includes high-value non-goal states.
+-   ✅ **PPO (Proximal Policy Optimization)**: Robust policy training.
+-   ✅ **Stochastic Robustness Test**: Validates policy generalization on a custom 10% slippery environment.
+
+## Experimental Findings
+
+**Note on Performance**: As detailed in the notebook, experimental results indicate that **these enhancements do not consistently improve performance** on the FrozenLake environment compared to the standard Go-Explore implementation.
+
+-   The computational overhead of the enhancements often outweighs their benefits in this relatively simple domain.
+-   Standard Go-Explore's simple heuristic (`weight ∝ 1/√visits`) is remarkably effective and hard to beat for this specific problem.
+-   This serves as an important educational result: complex algorithms are not always better for every problem instance.
 
 ## Requirements
 
@@ -54,126 +85,39 @@ pip install gymnasium numpy matplotlib torch
 
 ## Usage
 
-Simply open and run the Jupyter Notebook:
+Open and run the final notebook:
 
 ```bash
-jupyter notebook go_explore_mv.ipynb
+jupyter notebook go_explore_final.ipynb
 ```
 
-Or use JupyterLab:
+Run all cells to see:
 
-```bash
-jupyter lab go_explore_mv.ipynb
-```
+1.  Implementation of the enhanced components.
+2.  Comparative experiments between Enhanced and Standard Phase 1.
+3.  Phase 2 training with the Backward Algorithm and Near-Miss curriculum.
+4.  Final policy evaluation.
 
-Run all cells in order to:
+## What's Included in the Notebook
 
-1. Learn about Go-Explore's core concepts
-2. See Phase 1 (exploration) in action
-3. Visualize Phase 1 exploration progress and compare with random exploration
-4. Train a robust policy in Phase 2 using PPO and Backward Algorithm
-5. Evaluate the final trained policy
+1.  **Enhanced Phase 1 Implementation**:
 
-## What's Included
+    -   `DynaModel`: Learned transition model ($s, a \to s', r$).
+    -   `PrioritizedSweeping`: Value iteration with priority queues.
+    -   `SelectionPolicy`: REINFORCE-based neural selector.
+    -   `EnhancedArchive`: Integration of all components.
 
-The notebook contains:
+2.  **Standard Phase 1 Implementation**:
 
-### Phase 1 — Exploration
+    -   Baseline for comparison.
 
-1. **Introduction**: Overview of Go-Explore and its motivation
-2. **Algorithm Explanation**: Detailed description of Phase 1 components (including weighted selection)
-3. **Implementation**: Archive-based exploration with weighted cell selection
-4. **Visualization**: Plots showing exploration progress, cell selection patterns, and archive statistics
-5. **Analysis**: Archive statistics, visit distribution, and top trajectories
-6. **Comparison**: Go-Explore vs pure random exploration
+3.  **Phase 2 Implementation**:
 
-### Phase 2 — Robustification
+    -   Actor-Critic Network.
+    -   PPO Training Loop.
+    -   Backward Algorithm with Near-Miss integration.
 
-7. **Neural Network Architecture**: MLP-based Actor-Critic policy for 256-state environment
-8. **Behavior Cloning Warm-Start**: Initial policy training using demonstration trajectories
-9. **PPO Implementation**: Full PPO training loop with GAE
-10. **Backward Algorithm**: Curriculum learning from goal to start
-11. **Training Visualization**: Success rates and losses across curriculum stages
-12. **Final Evaluation**: Policy performance over 100 test episodes
-13. **Comparison**: Phase 1 trajectory vs Phase 2 learned policy
-14. **Custom 10% Slipperiness Test**: Evaluates policy on manageable stochastic environment to validate generalization
-
-## Key Concepts Demonstrated
-
-### Phase 1 Concepts
-
--   **Archive**: Storage of visited states and trajectories
--   **State Abstraction**: Converting states to abstract "cells"
--   **Weighted Cell Selection**: Prioritizes rarely-visited frontier cells (✅ implemented)
--   **Sticky Random Exploration**: 90% probability of repeating last action for coherent exploration (✅ implemented)
--   **Return-Then-Explore**: Systematically returning to promising states
--   **Deterministic Replay**: Reliable trajectory execution in deterministic environments
-
-### Phase 2 Concepts
-
--   **Behavior Cloning Warm-Start**: Initial policy training using demonstration trajectories (✅ implemented)
--   **Backward Algorithm**: Curriculum learning starting from near the goal
--   **PPO (Proximal Policy Optimization)**: Policy gradient method with clipped objective
--   **Actor-Critic Architecture**: Separate policy and value function heads
--   **GAE (Generalized Advantage Estimation)**: Variance reduction for advantage computation
--   **Robustification**: Converting brittle trajectories into robust neural network policies
--   **Stochastic Generalization**: Testing policy transfer from deterministic to 10% slipperiness environments
-
-## Implementation Notes
-
-This implementation demonstrates both phases of Go-Explore with some simplifications for educational clarity:
-
-### Compared to the Original Paper (Atari):
-
--   **Environment**: FrozenLake (discrete states) instead of Atari (pixel observations)
--   **Network**: MLP instead of CNN (appropriate for discrete states)
--   **State representation**: One-hot encoding instead of image downsampling
--   **Training scale**: Fewer episodes (simpler environment requires less training)
-
-### What Remains Faithful to Go-Explore:
-
-✅ Two-phase approach (exploration → robustification)  
-✅ Archive-based systematic exploration  
-✅ Weighted cell selection (prioritizes frontier cells)  
-✅ Sticky random exploration for coherent exploration patterns  
-✅ Behavior cloning warm-start for faster policy training  
-✅ PPO for policy optimization  
-✅ Backward Algorithm curriculum learning  
-✅ Trajectory-to-policy conversion methodology  
-✅ Custom 10% slipperiness testing (deterministic training → manageable stochastic evaluation)
-
-## Expected Results
-
-### Phase 1 Results
-
-When run on FrozenLake-v1 (16×16, deterministic), Phase 1 should:
-
--   Systematically discover all reachable cells
--   Find the goal state (reward = 1.0)
--   Solve the problem more efficiently than random exploration
--   Store a trajectory to the goal in the archive
-
-### Phase 2 Results
-
-After training with the Backward Algorithm, Phase 2 should:
-
--   **Deterministic Environment**: Achieve >90% success rate (typically 95-100%)
--   Learn an **optimal or near-optimal policy** (22-step Manhattan distance solution)
--   Successfully progress through all curriculum stages
--   Convert the brittle Phase 1 trajectory into a robust neural network policy
-
-### Custom 10% Slipperiness Test Results
-
-After training on deterministic environment, testing on custom 10% slipperiness environment:
-
--   **Expected success rate**: 50-70%
--   **Action noise**: 10% chance of unintended movement per action
--   **Interpretation**: 50-70% success demonstrates successful robustification and generalization
--   **Key validation**: Proves policy learned navigation skills, not just trajectory memorization
--   **Advantage**: Much more manageable than standard 67% slipperiness, allowing proper testing
-
-### Typical Training Pattern
-
--   **Stage 1-2**: Quick convergence (1-5 iterations) near the goal
--   **Later stages**: Initial struggle followed by breakthrough to 100% success
--   **Final policy**: Consistent, deterministic behavior achieving the goal every episode
+4.  **Analysis & Visualization**:
+    -   Comparisons of exploration efficiency.
+    -   Training curves for policy robustification.
+    -   Robustness tests on stochastic environments.
